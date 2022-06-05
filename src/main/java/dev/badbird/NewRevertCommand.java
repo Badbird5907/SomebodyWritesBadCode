@@ -187,14 +187,14 @@ public class NewRevertCommand extends GitCommand<RevCommit> {
                                 new ObjectId[]{headCommit.getId(),
                                         srcParent.getId()},
                                 MergeStatus.FAILED, strategy,
-                                merger.getMergeResults(), failingPaths, null);
+                                ((Map<String, org.eclipse.jgit.merge.MergeResult<?>>)merger.getMergeResults()), failingPaths, null);
                     else
                         failingResult = new MergeResult(null,
                                 merger.getBaseCommitId(),
                                 new ObjectId[]{headCommit.getId(),
                                         srcParent.getId()},
                                 MergeStatus.CONFLICTING, strategy,
-                                merger.getMergeResults(), failingPaths, null);
+                                ((Map<String, org.eclipse.jgit.merge.MergeResult<?>>)merger.getMergeResults()), failingPaths, null);
                     if (!merger.failed() && !unmergedPaths.isEmpty()) {
                         String message = new MergeMessageFormatter()
                                 .formatWithConflicts(newMessage,
