@@ -6,6 +6,7 @@ import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.RevertCommand;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
@@ -21,18 +22,19 @@ public class Main {
             System.exit(1);
             return;
         }
-        File repo = new File("./repo/");
-        repo.delete();
+        File repoFile = new File("./repo/");
+        repoFile.delete();
         try {
             JsonObject json = JsonParser.parseString(new String(Files.readAllBytes(config.toPath()))).getAsJsonObject();
             UsernamePasswordCredentialsProvider upassProvider = new UsernamePasswordCredentialsProvider(json.get("username").getAsString(), json.get("password").getAsString());
             CloneCommand cloneCommand = Git.cloneRepository();
             cloneCommand.setURI(json.get("repo").getAsString())
                     .setCredentialsProvider(upassProvider)
-                    .setDirectory(repo)
+                    .setDirectory(repoFile)
                     .call();
-            repo.deleteOnExit();
-            Git git = Git.open(repo);
+            repoFile.deleteOnExit();
+            Git git = Git.open(repoFile);
+            Repository repo = git.getRepository();
             new Thread(()-> {
                 while (true) {
                     try {
@@ -45,11 +47,14 @@ public class Main {
                         if (iterator.hasNext()) {
                             RevCommit commit = iterator.next();
                             System.out.println("Commit: " + commit.getId() + " | " + commit.getAuthorIdent().getName());
-                            if (commit.getAuthorIdent().getName().toLowerCase().contains(json.get("name").getAsString().toLowerCase())) {
+                            if (commit.getAuthorIdent().getName().equalsIgnoreCase(json.get("name").getAsString())) {
                                 System.out.println("Troll");
-                                RevertCommand revertCommand = git.revert();
+                                NewRevertCommand revertCommand = new NewRevertCommand(repo);//= git.revert();
                                 revertCommand.include(commit);
-                                revertCommand.setOurCommitName(json.get("commitName").getAsString().replace("%commit-name%", commit.getName()));
+                                if (json.has("commitTitle")) revertCommand.setCustomShortName(json.get("commitTitle").getAsString()
+                                        .replace("%commit-name%", commit.getName()));
+                                if (json.has("commitMessage")) revertCommand.setCustomMessage(json.get("commitMessage").getAsString()
+                                        .replace("%commit-name%", commit.getName()));
                                 revertCommand.call();
                                 git.push().setCredentialsProvider(upassProvider).call();
                             }
